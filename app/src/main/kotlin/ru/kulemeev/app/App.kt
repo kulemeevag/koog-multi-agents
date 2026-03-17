@@ -1,5 +1,9 @@
 package ru.kulemeev.app
 
+import kotlinx.coroutines.runBlocking
+
 fun main() {
-    ChatApplication().run()
+    runBlocking {
+        ChatApplication().run()
+    }
 }
