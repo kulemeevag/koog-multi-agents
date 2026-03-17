@@ -1,0 +1,5 @@
+{
+  "temperature": 0.7,
+  "systemPrompt": "Ты — полезный AI-ассистент.",
+  "modelId": "openrouter/free"
+}

@@ -1,15 +1,15 @@
 package ru.kulemeev.app.chat
 
-import ru.kulemeev.app.Message
+import ru.kulemeev.app.ChatMessage
 
 class ChatHistory {
-    private val history = mutableListOf<Message>()
+    private val history = mutableListOf<ChatMessage>()
 
-    fun add(message: Message) {
-        history.add(message)
+    fun add(chatMessage: ChatMessage) {
+        history.add(chatMessage)
     }
 
-    fun getAll(): List<Message> {
+    fun getAll(): List<ChatMessage> {
         return history.toList()
     }
 }
