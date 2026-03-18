@@ -28,18 +28,24 @@ class ChatHistory {
 
     /**
      * Trims the history to the specified maximum number of message pairs.
-     * Always ensures an even number of messages remains (full pairs).
+     * Always ensures the history starts with a User message and ends with an Assistant message (or nothing if empty).
      */
     fun trim(maxPairs: Int) {
         val maxMessages = maxPairs * 2
         
+        // If maxPairs is 0, just clear it
+        if (maxPairs <= 0) {
+            history.clear()
+            return
+        }
+
         while (history.size > maxMessages) {
             history.removeAt(0)
         }
         
-        // After trimming, ensure we have an even number of messages
-        // so that we always start with a User message and end with an Assistant message
-        if (history.size % 2 != 0) {
+        // After trimming by size, ensure the first message is a User message.
+        // If it's an Assistant message, remove it to maintain pair integrity.
+        while (history.isNotEmpty() && history[0] !is ChatMessage.User) {
             history.removeAt(0)
         }
     }

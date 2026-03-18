@@ -14,6 +14,10 @@ dependencies {
     implementation(libs.koog.agents)
     implementation(libs.logback.classic)
     implementation(libs.jline)
+    implementation(libs.clikt)
+
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(kotlin("test"))
 }
 
 application {

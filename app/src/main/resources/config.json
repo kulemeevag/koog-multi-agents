@@ -1,7 +1,7 @@
 {
   "temperature": 0.7,
-  "systemPrompt": "Ты — полезный AI-ассистент.",
-  "modelId": "google/gemma-3-4b-it:free",
+  "systemPrompt": "Ты — полезный AI-ассистент. Отвечай одним предложением",
+  "modelId": "openrouter/free",
   "maxTokens": null,
   "stopSequences": [],
   "maxHistoryPairs": 10

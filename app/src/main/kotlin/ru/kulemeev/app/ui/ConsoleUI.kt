@@ -198,6 +198,7 @@ class ConsoleUI {
     fun displayReasoning(reasoning: String?) {
         if (reasoning != null) {
             print("${CYAN}[Reasoning] $reasoning$RESET")
+            System.out.flush()
         }
     }
 }
