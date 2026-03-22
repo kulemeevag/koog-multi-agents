@@ -24,7 +24,8 @@ data class ChatCommandContext(
     val configLoader: ConfigLoader,
     val currentJob: AtomicReference<Job?>,
     val onExit: () -> Unit,
-    val onHistoryPairsChange: (Int) -> Unit
+    val onHistoryPairsChange: (Int) -> Unit,
+    val onModelChange: (String) -> Unit
 )
 
 sealed class CommandResult {

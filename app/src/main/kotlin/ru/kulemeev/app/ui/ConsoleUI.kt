@@ -29,23 +29,42 @@ class ConsoleUI {
 
     fun displayHelp() {
         println("${YELLOW}Available slash commands:$RESET")
-        println("${CYAN}/temp$RESET          - View current temperature")
-        println("${CYAN}/temp <value>$RESET  - Set temperature (0.0 to 1.0)")
-        println("${CYAN}/system$RESET        - View current system prompt")
-        println("${CYAN}/system <text>$RESET - Set system prompt")
-        println("${CYAN}/max_tokens$RESET    - View current max tokens")
-        println("${CYAN}/max_tokens <v>$RESET - Set max tokens (null for unlimited)")
-        println("${CYAN}/stop$RESET          - View current stop sequences")
-        println("${CYAN}/stop <s1>,...$RESET - Set stop sequences (comma separated)")
-        println("${CYAN}/history$RESET       - View current history limit (pairs)")
-        println("${CYAN}/history <n>$RESET   - Set max history pairs")
-        println("${CYAN}/compare$RESET       - Interactive comparison mode")
-        println("${CYAN}/compare <text>$RESET - Comparison mode with initial prompt")
-        println("${CYAN}/config$RESET        - View all current settings")
-        println("${CYAN}/clear$RESET         - Clear chat history")
-        println("${CYAN}/reset$RESET         - Reset parameters to config defaults")
+        println("${CYAN}/model$RESET          - View current model ID")
+        println("${CYAN}/model list$RESET     - List available models")
+        println("${CYAN}/model <id>$RESET      - Set model ID (e.g., google/gemini-2.0-flash-exp:free)")
+        println("${CYAN}/temp$RESET           - View current temperature")
+        println("${CYAN}/temp <value>$RESET   - Set temperature (0.0 to 1.0)")
+        println("${CYAN}/system$RESET         - View current system prompt")
+        println("${CYAN}/system <text>$RESET  - Set system prompt")
+        println("${CYAN}/max_tokens$RESET     - View current max tokens")
+        println("${CYAN}/max_tokens <v>$RESET  - Set max tokens (null for unlimited)")
+        println("${CYAN}/stop$RESET           - View current stop sequences")
+        println("${CYAN}/stop <s1>,...$RESET  - Set stop sequences (comma separated)")
+        println("${CYAN}/history$RESET        - View current history limit (pairs)")
+        println("${CYAN}/history <n>$RESET    - Set max history pairs")
+        println("${CYAN}/compare$RESET        - Interactive comparison mode")
+        println("${CYAN}/compare <text>$RESET  - Comparison mode with initial prompt")
+        println("${CYAN}/config$RESET         - View all current settings")
+        println("${CYAN}/clear$RESET          - Clear chat history")
+        println("${CYAN}/reset$RESET          - Reset parameters to config defaults")
         println("${CYAN}/exit$RESET or ${CYAN}/quit$RESET - Exit the application")
-        println("${CYAN}/help$RESET          - Show this help message")
+        println("${CYAN}/help$RESET           - Show this help message")
+    }
+
+    fun displayCurrentModel(modelId: String) {
+        println("${GREEN}Current model: $modelId$RESET")
+    }
+
+    fun displayModelSet(modelId: String) {
+        println("${GREEN}Model set to $modelId$RESET")
+    }
+
+    fun displayAvailableModels(models: List<String>) {
+        println("${BOLD}${YELLOW}=== Available Models ===$RESET")
+        models.forEach { model ->
+            println("${CYAN}${model}$RESET")
+        }
+        println("${BOLD}${YELLOW}========================$RESET")
     }
 
     fun displayCurrentConfig(

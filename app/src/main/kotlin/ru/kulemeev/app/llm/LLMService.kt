@@ -41,4 +41,8 @@ class LLMService(
         }
         return client.executeStreaming(prompt, model)
     }
+
+    suspend fun getAvailableModels(): List<LLModel> {
+        return client.models()
+    }
 }

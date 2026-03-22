@@ -4,6 +4,33 @@ import ru.kulemeev.app.chat.ChatCommand
 import ru.kulemeev.app.chat.ChatCommandContext
 import ru.kulemeev.app.chat.CommandResult
 
+class ModelCommand : ChatCommand {
+    override val name = "model"
+    override val description = "View, list or set model ID"
+    override suspend fun execute(args: String, context: ChatCommandContext): CommandResult {
+        when {
+            args.isBlank() -> {
+                context.ui.displayCurrentModel(context.llmService.model.id)
+            }
+
+            args.trim().lowercase() == "list" -> {
+                try {
+                    val models = context.llmService.getAvailableModels().map { m -> m.id }
+                    context.ui.displayAvailableModels(models)
+                } catch (e: Exception) {
+                    context.ui.displayError("Failed to fetch models: ${e.message}")
+                }
+            }
+
+            else -> {
+                context.onModelChange(args.trim())
+                context.ui.displayModelSet(args.trim())
+            }
+        }
+        return CommandResult.Handled
+    }
+}
+
 class TempCommand : ChatCommand {
     override val name = "temp"
     override val description = "View or set temperature (0.0 to 1.0)"

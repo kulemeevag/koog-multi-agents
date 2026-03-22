@@ -27,6 +27,7 @@ class ChatApplication(
         listOf(
             ExitCommand(),
             HelpCommand(),
+            ModelCommand(),
             ClearCommand(),
             ConfigCommand(),
             TempCommand(),
@@ -101,7 +102,10 @@ class ChatApplication(
             configLoader = configLoader,
             currentJob = currentJob,
             onExit = { isRunning = false },
-            onHistoryPairsChange = { maxHistoryPairs = it }
+            onHistoryPairsChange = { maxHistoryPairs = it },
+            onModelChange = { newModelId ->
+                llmService.model = createModel(newModelId)
+            }
         )
 
         while (isRunning) {
