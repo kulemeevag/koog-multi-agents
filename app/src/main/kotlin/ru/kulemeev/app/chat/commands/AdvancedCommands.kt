@@ -26,7 +26,7 @@ class ResetCommand : ChatCommand {
         context.agent.systemPrompt = freshConfig.systemPrompt
         context.agent.maxTokens = freshConfig.maxTokens
         context.agent.stopSequences = freshConfig.stopSequences
-        context.onHistoryPairsChange(freshConfig.maxHistoryPairs)
+        context.agent.maxHistoryPairs = freshConfig.maxHistoryPairs
         context.ui.displayParametersReset()
         return CommandResult.Handled
     }

@@ -14,7 +14,7 @@ import java.util.*
 
 /**
  * ChatAgent is the primary entity of our application, fulfilling the Day 6 requirement.
- * It encapsulates the interaction logic and history management.
+ * It encapsulates the interaction logic, history management, and current configuration.
  */
 class ChatAgent(
     private val executor: LLMClient,
@@ -22,9 +22,9 @@ class ChatAgent(
     var systemPrompt: String,
     var temperature: Double = 0.7,
     var maxTokens: Int? = null,
-    var stopSequences: List<String> = emptyList()
+    var stopSequences: List<String> = emptyList(),
+    var maxHistoryPairs: Int = 10
 ) {
-    // We maintain history in a Prompt object, which is the 'koog' way.
     private var currentPrompt: Prompt = prompt(UUID.randomUUID().toString()) {
         system(systemPrompt)
     }
@@ -36,14 +36,22 @@ class ChatAgent(
         userInput: String,
         overrideParams: LLMParams? = null
     ): Flow<StreamFrame> = flow {
-        // 1. Prepare updated prompt with new user message
-        val params = createParams(overrideParams)
+        // 1. Automatic maintenance: Trim history BEFORE adding new exchange.
+        // If we want to stay within maxHistoryPairs, we should have (maxHistoryPairs - 1)
+        // pairs before adding the current one.
+        trimHistory(maxHistoryPairs - 1)
 
-        // We use the DSL-like approach to update the prompt
+        // 2. Prepare updated prompt
+        val params = overrideParams ?: createParams()
+
+        // Always inject the LATEST system prompt and current history
+        val historyWithoutSystem = currentPrompt.messages.filter { it.role != Message.Role.System }
+        val currentSystemMessage = prompt(UUID.randomUUID().toString()) { system(systemPrompt) }.messages
+
         val nextPrompt = currentPrompt.copy(
             id = UUID.randomUUID().toString(),
             params = params,
-            messages = currentPrompt.messages + prompt(UUID.randomUUID().toString()) { user(userInput) }.messages
+            messages = currentSystemMessage + historyWithoutSystem + prompt(UUID.randomUUID().toString()) { user(userInput) }.messages
         )
 
         var accumulatedText = ""
@@ -53,7 +61,7 @@ class ChatAgent(
             if (frame is StreamFrame.TextDelta) accumulatedText += frame.text
         }
 
-        // 2. Update the persistent prompt with the assistant's response
+        // 3. Persist the response
         if (accumulatedText.isNotBlank()) {
             val assistantMsg = prompt(UUID.randomUUID().toString()) { assistant(accumulatedText) }.messages.first()
             currentPrompt = nextPrompt.copy(
@@ -62,14 +70,11 @@ class ChatAgent(
         }
     }
 
-    /**
-     * Supports Day 2, 3, 5: Stateless request.
-     */
     fun sendSingleRequestStreaming(
         userInput: String,
         overrideParams: LLMParams? = null
     ): Flow<StreamFrame> = flow {
-        val params = createParams(overrideParams)
+        val params = overrideParams ?: createParams()
         val singlePrompt = prompt(UUID.randomUUID().toString(), params) {
             system(systemPrompt)
             user(userInput)
@@ -83,12 +88,25 @@ class ChatAgent(
         }
     }
 
-    fun getHistoryMessages(): List<Message> = currentPrompt.messages
+    fun trimHistory(maxPairs: Int) {
+        val messages = currentPrompt.messages
+        val systemMessages = messages.filter { it.role == Message.Role.System }
+        val nonSystemMessages = messages.filter { it.role != Message.Role.System }
 
+        val keepCount = maxPairs * 2
+        if (nonSystemMessages.size > keepCount) {
+            val trimmedNonSystem = nonSystemMessages.takeLast(keepCount)
+            currentPrompt = currentPrompt.copy(
+                messages = systemMessages + trimmedNonSystem
+            )
+        }
+    }
+
+    fun getHistoryMessages(): List<Message> = currentPrompt.messages
     suspend fun getAvailableModels(): List<LLModel> = executor.models()
 
-    private fun createParams(overrideParams: LLMParams? = null): LLMParams {
-        return overrideParams ?: OpenRouterParams(
+    private fun createParams(): LLMParams {
+        return OpenRouterParams(
             temperature = temperature,
             maxTokens = maxTokens,
             stop = stopSequences.takeIf { it.isNotEmpty() }

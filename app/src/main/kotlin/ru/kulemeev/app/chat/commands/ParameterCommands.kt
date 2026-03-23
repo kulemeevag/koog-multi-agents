@@ -1,5 +1,8 @@
 package ru.kulemeev.app.chat.commands
 
+import ai.koog.prompt.llm.LLMCapability
+import ai.koog.prompt.llm.LLMProvider
+import ai.koog.prompt.llm.LLModel
 import ru.kulemeev.app.chat.ChatCommand
 import ru.kulemeev.app.chat.ChatCommandContext
 import ru.kulemeev.app.chat.CommandResult
@@ -21,8 +24,16 @@ class ModelCommand : ChatCommand {
                 }
             }
             else -> {
-                context.onModelChange(args.trim())
-                context.ui.displayModelSet(args.trim())
+                val newModelId = args.trim()
+                context.agent.model = LLModel(
+                    provider = LLMProvider.OpenRouter,
+                    id = newModelId,
+                    capabilities = listOf(
+                        LLMCapability.Temperature,
+                        LLMCapability.Completion,
+                    )
+                )
+                context.ui.displayModelSet(newModelId)
             }
         }
         return CommandResult.Handled
@@ -101,11 +112,11 @@ class HistoryLimitCommand : ChatCommand {
     override val description = "View or set max history pairs"
     override suspend fun execute(args: String, context: ChatCommandContext): CommandResult {
         if (args.isBlank()) {
-            context.ui.displayCurrentHistoryPairs(context.maxHistoryPairs)
+            context.ui.displayCurrentHistoryPairs(context.agent.maxHistoryPairs)
         } else {
             val newLimit = args.toIntOrNull()
             if (newLimit != null && newLimit >= 0) {
-                context.onHistoryPairsChange(newLimit)
+                context.agent.maxHistoryPairs = newLimit
                 context.ui.displayHistoryPairsSet(newLimit)
             } else {
                 context.ui.displayError("Invalid history limit. Please provide a non-negative integer.")

@@ -21,12 +21,9 @@ interface ChatCommand {
 data class ChatCommandContext(
     val ui: ConsoleUI,
     val agent: ChatAgent,
-    var maxHistoryPairs: Int,
     val configLoader: ConfigLoader,
     val currentJob: AtomicReference<Job?>,
-    val onExit: () -> Unit,
-    val onHistoryPairsChange: (Int) -> Unit,
-    val onModelChange: (String) -> Unit
+    val onExit: () -> Unit
 )
 
 sealed class CommandResult {

@@ -19,7 +19,6 @@ import kotlin.system.exitProcess
 class ChatApplication(
     private val configLoader: ConfigLoader = JsonFileConfigLoader()
 ) {
-    private var maxHistoryPairs: Int = 10
     private var isRunning = true
 
     private val commandManager = CommandManager(
@@ -46,7 +45,6 @@ class ChatApplication(
         System.setProperty("org.jline.utils.Log.level", "ERROR")
 
         val config = configLoader.loadConfig()
-        maxHistoryPairs = config.maxHistoryPairs
         val ui = ConsoleUI()
 
         val currentJob = AtomicReference<Job?>(null)
@@ -89,20 +87,16 @@ class ChatApplication(
             systemPrompt = config.systemPrompt,
             temperature = config.temperature,
             maxTokens = config.maxTokens,
-            stopSequences = config.stopSequences
+            stopSequences = config.stopSequences,
+            maxHistoryPairs = config.maxHistoryPairs
         )
 
         val context = ChatCommandContext(
             ui = ui,
             agent = agent,
-            maxHistoryPairs = maxHistoryPairs,
             configLoader = configLoader,
             currentJob = currentJob,
-            onExit = { isRunning = false },
-            onHistoryPairsChange = { maxHistoryPairs = it },
-            onModelChange = { newModelId ->
-                agent.model = createModel(newModelId)
-            }
+            onExit = { isRunning = false }
         )
 
         while (isRunning) {

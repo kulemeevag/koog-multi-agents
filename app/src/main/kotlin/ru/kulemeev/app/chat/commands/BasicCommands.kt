@@ -40,11 +40,11 @@ class ConfigCommand : ChatCommand {
     override suspend fun execute(args: String, context: ChatCommandContext): CommandResult {
         context.ui.displayCurrentConfig(
             modelId = context.agent.model.id,
-            temperature = 0.7, // Temp is currently not directly exposed as property in agent, but we can fix that
+            temperature = context.agent.temperature,
             systemPrompt = context.agent.systemPrompt,
-            maxTokens = null,
-            stopSequences = emptyList(),
-            maxHistoryPairs = context.maxHistoryPairs
+            maxTokens = context.agent.maxTokens,
+            stopSequences = context.agent.stopSequences,
+            maxHistoryPairs = context.agent.maxHistoryPairs
         )
         return CommandResult.Handled
     }
