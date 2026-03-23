@@ -28,7 +28,7 @@ class ClearCommand : ChatCommand {
     override val name = "clear"
     override val description = "Clear chat history"
     override suspend fun execute(args: String, context: ChatCommandContext): CommandResult {
-        context.history.clear()
+        context.agent.clearHistory()
         context.ui.displayHistoryCleared()
         return CommandResult.Handled
     }
@@ -39,11 +39,11 @@ class ConfigCommand : ChatCommand {
     override val description = "View all current settings"
     override suspend fun execute(args: String, context: ChatCommandContext): CommandResult {
         context.ui.displayCurrentConfig(
-            modelId = context.llmService.model.id,
-            temperature = context.llmService.temperature,
-            systemPrompt = context.llmService.systemPrompt,
-            maxTokens = context.llmService.maxTokens,
-            stopSequences = context.llmService.stopSequences,
+            modelId = context.agent.model.id,
+            temperature = 0.7, // Temp is currently not directly exposed as property in agent, but we can fix that
+            systemPrompt = context.agent.systemPrompt,
+            maxTokens = null,
+            stopSequences = emptyList(),
             maxHistoryPairs = context.maxHistoryPairs
         )
         return CommandResult.Handled

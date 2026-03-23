@@ -11,7 +11,6 @@ import ru.kulemeev.app.chat.*
 import ru.kulemeev.app.chat.commands.*
 import ru.kulemeev.app.config.ConfigLoader
 import ru.kulemeev.app.config.JsonFileConfigLoader
-import ru.kulemeev.app.llm.LLMService
 import ru.kulemeev.app.ui.ConsoleUI
 import sun.misc.Signal
 import java.util.concurrent.atomic.AtomicReference
@@ -84,27 +83,25 @@ class ChatApplication(
             )
         )
 
-        val llmService = LLMService(
-            client = client,
+        val agent = ChatAgent(
+            executor = client,
             model = createModel(config.modelId),
             systemPrompt = config.systemPrompt,
             temperature = config.temperature,
             maxTokens = config.maxTokens,
             stopSequences = config.stopSequences
         )
-        val history = ChatHistory()
 
         val context = ChatCommandContext(
             ui = ui,
-            llmService = llmService,
-            history = history,
+            agent = agent,
             maxHistoryPairs = maxHistoryPairs,
             configLoader = configLoader,
             currentJob = currentJob,
             onExit = { isRunning = false },
             onHistoryPairsChange = { maxHistoryPairs = it },
             onModelChange = { newModelId ->
-                llmService.model = createModel(newModelId)
+                agent.model = createModel(newModelId)
             }
         )
 
@@ -123,15 +120,7 @@ class ChatApplication(
             if (cmdResult is CommandResult.Handled) continue
 
             // Normal flow:
-            history.trim(maxHistoryPairs)
-            val userMsg = ChatMessage.User(userInput)
-            history.add(userMsg)
-
-            val response = executeStreamingRequestInternal(history.getAll(), llmService, ui, currentJob, null)
-
-            if (response.text.isNotBlank()) {
-                history.add(ChatMessage.Assistant(response.text, response.finishReason))
-            }
+            executeStreamingRequest(userInput, agent, ui, currentJob)
         }
     }
 }

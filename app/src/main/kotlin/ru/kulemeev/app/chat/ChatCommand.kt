@@ -6,9 +6,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import ru.kulemeev.app.ChatMessage
 import ru.kulemeev.app.config.ConfigLoader
-import ru.kulemeev.app.llm.LLMService
 import ru.kulemeev.app.ui.ConsoleUI
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.measureTimedValue
@@ -22,8 +20,7 @@ interface ChatCommand {
 
 data class ChatCommandContext(
     val ui: ConsoleUI,
-    val llmService: LLMService,
-    val history: ChatHistory,
+    val agent: ChatAgent,
     var maxHistoryPairs: Int,
     val configLoader: ConfigLoader,
     val currentJob: AtomicReference<Job?>,
@@ -38,12 +35,13 @@ sealed class CommandResult {
     data object Exit : CommandResult()
 }
 
-suspend fun executeStreamingRequestInternal(
-    messages: List<ChatMessage>,
-    llmService: LLMService,
+suspend fun executeStreamingRequest(
+    userInput: String,
+    agent: ChatAgent,
     ui: ConsoleUI,
     currentJob: AtomicReference<Job?>,
-    overrideParams: LLMParams?
+    overrideParams: LLMParams? = null,
+    isComparison: Boolean = false
 ): LLMResponse = coroutineScope {
     println()
 
@@ -53,10 +51,16 @@ suspend fun executeStreamingRequestInternal(
         var inputTokens: Int? = null
         var outputTokens: Int? = null
 
-        val scope = this // Explicitly use the coroutineScope
+        val scope = this
         val streamJob = scope.launch {
             try {
-                llmService.streamResponse(messages, overrideParams).collect { frame ->
+                val flow = if (isComparison) {
+                    agent.sendSingleRequestStreaming(userInput, overrideParams)
+                } else {
+                    agent.processMessageStreaming(userInput, overrideParams)
+                }
+
+                flow.collect { frame ->
                     when (frame) {
                         is StreamFrame.TextDelta -> {
                             ui.displayBotMessageChunk(frame.text)
@@ -87,7 +91,7 @@ suspend fun executeStreamingRequestInternal(
     }
 
     ui.displayResponseEnd()
-    ui.displayResponseStats(response.inputTokens, response.outputTokens, duration, messages.size)
+    ui.displayResponseStats(response.inputTokens, response.outputTokens, duration, agent.getHistoryMessages().size)
     ui.displayFinishReason(response.finishReason)
 
     response
