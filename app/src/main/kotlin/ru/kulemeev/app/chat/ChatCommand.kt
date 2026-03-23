@@ -1,13 +1,17 @@
 package ru.kulemeev.app.chat
 
+import ai.koog.prompt.params.LLMParams
+import ai.koog.prompt.streaming.StreamFrame
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import ru.kulemeev.app.ChatMessage
 import ru.kulemeev.app.config.ConfigLoader
 import ru.kulemeev.app.llm.LLMService
 import ru.kulemeev.app.ui.ConsoleUI
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.time.measureTimedValue
 
 interface ChatCommand {
     val name: String
@@ -35,47 +39,56 @@ sealed class CommandResult {
 }
 
 suspend fun executeStreamingRequestInternal(
-    messages: List<ru.kulemeev.app.ChatMessage>,
+    messages: List<ChatMessage>,
     llmService: LLMService,
     ui: ConsoleUI,
     currentJob: AtomicReference<Job?>,
-    overrideParams: ai.koog.prompt.params.LLMParams?
+    overrideParams: LLMParams?
 ): LLMResponse = coroutineScope {
-    var accumulatedText = ""
-    var accumulatedReason: String? = null
     println()
 
-    val scope = this // Explicitly use the coroutineScope
-    val streamJob = scope.launch {
-        try {
-            llmService.streamResponse(messages, overrideParams).collect { frame ->
-                when (frame) {
-                    is ai.koog.prompt.streaming.StreamFrame.TextDelta -> {
-                        ui.displayBotMessageChunk(frame.text)
-                        accumulatedText += frame.text
+    val (response, duration) = measureTimedValue {
+        var accumulatedText = ""
+        var accumulatedReason: String? = null
+        var inputTokens: Int? = null
+        var outputTokens: Int? = null
+
+        val scope = this // Explicitly use the coroutineScope
+        val streamJob = scope.launch {
+            try {
+                llmService.streamResponse(messages, overrideParams).collect { frame ->
+                    when (frame) {
+                        is StreamFrame.TextDelta -> {
+                            ui.displayBotMessageChunk(frame.text)
+                            accumulatedText += frame.text
+                        }
+                        is StreamFrame.ReasoningDelta -> ui.displayReasoning(frame.text)
+                        is StreamFrame.ToolCallComplete -> ui.displayToolCall(frame.name)
+                        is StreamFrame.End -> {
+                            accumulatedReason = frame.finishReason
+                            inputTokens = frame.metaInfo.inputTokensCount
+                            outputTokens = frame.metaInfo.outputTokensCount
+                        }
+                        else -> {}
                     }
-                    is ai.koog.prompt.streaming.StreamFrame.ReasoningDelta -> ui.displayReasoning(frame.text)
-                    is ai.koog.prompt.streaming.StreamFrame.ToolCallComplete -> ui.displayToolCall(frame.name)
-                    is ai.koog.prompt.streaming.StreamFrame.End -> {
-                        accumulatedReason = frame.finishReason
-                    }
-                    else -> {}
                 }
+            } catch (_: CancellationException) {
+                ui.displayGenerationCancelled()
+            } catch (e: Exception) {
+                ui.displayError("Streaming error: ${e.message}")
             }
-        } catch (_: CancellationException) {
-            ui.displayGenerationCancelled()
-        } catch (e: Exception) {
-            ui.displayError("Streaming error: ${e.message}")
         }
+
+        currentJob.set(streamJob)
+        streamJob.join()
+        currentJob.set(null)
+
+        LLMResponse(accumulatedText, accumulatedReason, inputTokens, outputTokens)
     }
 
-    currentJob.set(streamJob)
-    streamJob.join()
-    currentJob.set(null)
-
     ui.displayResponseEnd()
-    ui.displayFinishReason(accumulatedReason)
+    ui.displayResponseStats(response.inputTokens, response.outputTokens, duration, messages.size)
+    ui.displayFinishReason(response.finishReason)
 
-    LLMResponse(accumulatedText, accumulatedReason)
+    response
 }
-

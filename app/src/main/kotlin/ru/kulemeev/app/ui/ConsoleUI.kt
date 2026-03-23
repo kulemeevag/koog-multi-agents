@@ -4,6 +4,7 @@ import org.jline.reader.EndOfFileException
 import org.jline.reader.LineReaderBuilder
 import org.jline.reader.UserInterruptException
 import org.jline.terminal.TerminalBuilder
+import kotlin.time.Duration
 
 class ConsoleUI {
     private val terminal = TerminalBuilder.builder()
@@ -59,10 +60,10 @@ class ConsoleUI {
         println("${GREEN}Model set to $modelId$RESET")
     }
 
-    fun displayAvailableModels(models: List<String>) {
+    fun displayAvailableModels(modelIds: List<String>) {
         println("${BOLD}${YELLOW}=== Available Models ===$RESET")
-        models.forEach { model ->
-            println("${CYAN}${model}$RESET")
+        modelIds.forEach { id ->
+            println("${CYAN}$id$RESET")
         }
         println("${BOLD}${YELLOW}========================$RESET")
     }
@@ -198,6 +199,20 @@ class ConsoleUI {
 
     fun displayResponseEnd() {
         println()
+    }
+
+    fun displayResponseStats(
+        inputTokens: Int?,
+        outputTokens: Int?,
+        duration: Duration,
+        historySize: Int
+    ) {
+        print("${CYAN}[Time: $duration")
+        if (inputTokens != null && outputTokens != null) {
+            print(", Tokens: ${inputTokens} in / ${outputTokens} out")
+        }
+        print(", History: $historySize messages")
+        println("]$RESET")
     }
 
     fun displayFinishReason(reason: String?) {

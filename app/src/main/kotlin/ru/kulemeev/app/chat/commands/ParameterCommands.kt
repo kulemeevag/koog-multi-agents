@@ -15,8 +15,8 @@ class ModelCommand : ChatCommand {
 
             args.trim().lowercase() == "list" -> {
                 try {
-                    val models = context.llmService.getAvailableModels().map { m -> m.id }
-                    context.ui.displayAvailableModels(models)
+                    val modelIds = context.llmService.getAvailableModels().map { it.id }
+                    context.ui.displayAvailableModels(modelIds)
                 } catch (e: Exception) {
                     context.ui.displayError("Failed to fetch models: ${e.message}")
                 }
