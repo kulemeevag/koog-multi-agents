@@ -32,6 +32,37 @@ class ResetCommand : ChatCommand {
     }
 }
 
+class ResumeCommand : ChatCommand {
+    override val name = "resume"
+    override val description = "List and resume previous sessions"
+    override suspend fun execute(args: String, context: ChatCommandContext): CommandResult {
+        val sessions = context.agent.listSessions()
+        
+        if (args.isBlank()) {
+            context.ui.displaySessionList(sessions)
+            println("Usage: /resume <id> or /resume <index>")
+            return CommandResult.Handled
+        }
+
+        val targetSession = if (args.toIntOrNull() != null) {
+            val index = args.toInt()
+            sessions.getOrNull(index)
+        } else {
+            args.trim()
+        }
+
+        if (targetSession != null && sessions.contains(targetSession)) {
+            context.agent.resumeSession(targetSession)
+            context.ui.displayFullHistory(context.agent.getHistoryMessages())
+            println("Resumed session: $targetSession")
+        } else {
+            context.ui.displayError("Session not found: $args")
+        }
+        
+        return CommandResult.Handled
+    }
+}
+
 class CompareCommand : ChatCommand {
     override val name = "compare"
     override val description = "Interactive comparison mode"

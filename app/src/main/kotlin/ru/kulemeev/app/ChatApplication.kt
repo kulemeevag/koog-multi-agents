@@ -33,6 +33,7 @@ class ChatApplication(
             MaxTokensCommand(),
             StopSequencesCommand(),
             HistoryLimitCommand(),
+            ResumeCommand(),
             CompareCommand(),
             ResetCommand()
         )

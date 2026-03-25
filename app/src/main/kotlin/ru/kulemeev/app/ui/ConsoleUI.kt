@@ -32,24 +32,43 @@ class ConsoleUI {
         println("${YELLOW}Available slash commands:$RESET")
         println("${CYAN}/model$RESET          - View current model ID")
         println("${CYAN}/model list$RESET     - List available models")
-        println("${CYAN}/model <id>$RESET      - Set model ID (e.g., google/gemini-2.0-flash-exp:free)")
-        println("${CYAN}/temp$RESET           - View current temperature")
+        println("${CYAN}/model <id>$RESET      - Set model ID")
         println("${CYAN}/temp <value>$RESET   - Set temperature (0.0 to 1.0)")
-        println("${CYAN}/system$RESET         - View current system prompt")
         println("${CYAN}/system <text>$RESET  - Set system prompt")
-        println("${CYAN}/max_tokens$RESET     - View current max tokens")
-        println("${CYAN}/max_tokens <v>$RESET  - Set max tokens (null for unlimited)")
-        println("${CYAN}/stop$RESET           - View current stop sequences")
-        println("${CYAN}/stop <s1>,...$RESET  - Set stop sequences (comma separated)")
-        println("${CYAN}/history$RESET        - View current history limit (pairs)")
+        println("${CYAN}/max_tokens <v>$RESET  - Set max tokens")
         println("${CYAN}/history <n>$RESET    - Set max history pairs")
-        println("${CYAN}/compare$RESET        - Interactive comparison mode")
-        println("${CYAN}/compare <text>$RESET  - Comparison mode with initial prompt")
+        println("${CYAN}/resume$RESET         - List and resume previous sessions")
+        println("${CYAN}/resume <id>$RESET    - Resume specific session")
         println("${CYAN}/config$RESET         - View all current settings")
-        println("${CYAN}/clear$RESET          - Clear chat history")
-        println("${CYAN}/reset$RESET          - Reset parameters to config defaults")
-        println("${CYAN}/exit$RESET or ${CYAN}/quit$RESET - Exit the application")
+        println("${CYAN}/clear$RESET          - Start a fresh session")
+        println("${CYAN}/exit$RESET or ${CYAN}/quit$RESET - Exit")
         println("${CYAN}/help$RESET           - Show this help message")
+    }
+
+    fun displaySessionList(sessions: List<String>) {
+        println("${BOLD}${YELLOW}=== Available Sessions ===$RESET")
+        if (sessions.isEmpty()) {
+            println("No saved sessions found.")
+        } else {
+            sessions.forEachIndexed { index, id ->
+                println("${CYAN}[$index] $id$RESET")
+            }
+        }
+        println("${BOLD}${YELLOW}==========================$RESET")
+    }
+
+    fun displayFullHistory(messages: List<ai.koog.prompt.message.Message>) {
+        println("\n${BOLD}${MAGENTA}=== Session History ===$RESET")
+        messages.forEach { msg ->
+            val roleColor = when (msg.role) {
+                ai.koog.prompt.message.Message.Role.User -> GREEN
+                ai.koog.prompt.message.Message.Role.Assistant -> YELLOW
+                ai.koog.prompt.message.Message.Role.System -> CYAN
+                else -> MAGENTA
+            }
+            println("${BOLD}$roleColor${msg.role}:$RESET ${msg.content}")
+        }
+        println("${BOLD}${MAGENTA}=======================\n$RESET")
     }
 
     fun displayCurrentModel(modelId: String) {
