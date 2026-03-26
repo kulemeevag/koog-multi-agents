@@ -49,3 +49,18 @@ class ConfigCommand : ChatCommand {
         return CommandResult.Handled
     }
 }
+
+class StatsCommand : ChatCommand {
+    override val name = "stats"
+    override val description = "View token statistics for the current session"
+    override suspend fun execute(args: String, context: ChatCommandContext): CommandResult {
+        context.ui.displayResponseStats(
+            null, null,
+            context.agent.sessionInputTokens,
+            context.agent.sessionOutputTokens,
+            null,
+            context.agent.getHistoryMessages().size
+        )
+        return CommandResult.Handled
+    }
+}

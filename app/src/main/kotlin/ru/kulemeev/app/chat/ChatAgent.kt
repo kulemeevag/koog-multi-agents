@@ -30,6 +30,11 @@ class ChatAgent(
     var currentSessionId: String
         private set
 
+    var sessionInputTokens: Int = 0
+        private set
+    var sessionOutputTokens: Int = 0
+        private set
+
     init {
         // Start with a CLEAN session by default (like ClaudeCode/Gemini)
         currentSessionId = generateNewSessionId()
@@ -57,6 +62,8 @@ class ChatAgent(
             currentSessionId = sessionId
             // Reconstruct prompt from saved messages
             currentPrompt = prompt(UUID.randomUUID().toString()) {}.copy(messages = savedMessages)
+            sessionInputTokens = 0
+            sessionOutputTokens = 0
         }
     }
 
@@ -89,7 +96,12 @@ class ChatAgent(
         var accumulatedText = ""
         executor.executeStreaming(nextPrompt, model).collect { frame ->
             emit(frame)
-            if (frame is StreamFrame.TextDelta) accumulatedText += frame.text
+            if (frame is StreamFrame.TextDelta) {
+                accumulatedText += frame.text
+            } else if (frame is StreamFrame.End) {
+                sessionInputTokens += frame.metaInfo.inputTokensCount ?: 0
+                sessionOutputTokens += frame.metaInfo.outputTokensCount ?: 0
+            }
         }
 
         if (accumulatedText.isNotBlank()) {
@@ -108,13 +120,21 @@ class ChatAgent(
             system(systemPrompt)
             user(userInput)
         }
-        executor.executeStreaming(singlePrompt, model).collect { emit(it) }
+        executor.executeStreaming(singlePrompt, model).collect { frame ->
+            emit(frame)
+            if (frame is StreamFrame.End) {
+                sessionInputTokens += frame.metaInfo.inputTokensCount ?: 0
+                sessionOutputTokens += frame.metaInfo.outputTokensCount ?: 0
+            }
+        }
     }
 
     fun clearHistory() {
         currentSessionId = generateNewSessionId()
         currentPrompt = createInitialPrompt()
         currentPrompt.messages.forEach { storage.appendMessage(currentSessionId, it) }
+        sessionInputTokens = 0
+        sessionOutputTokens = 0
     }
 
     fun trimHistory(maxPairs: Int) {

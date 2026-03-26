@@ -40,13 +40,12 @@ suspend fun executeStreamingRequest(
     overrideParams: LLMParams? = null,
     isComparison: Boolean = false
 ): LLMResponse = coroutineScope {
-    println()
-
     val (response, duration) = measureTimedValue {
         var accumulatedText = ""
         var accumulatedReason: String? = null
         var inputTokens: Int? = null
         var outputTokens: Int? = null
+        var isFirstChunk = true
 
         val scope = this
         val streamJob = scope.launch {
@@ -60,8 +59,19 @@ suspend fun executeStreamingRequest(
                 flow.collect { frame ->
                     when (frame) {
                         is StreamFrame.TextDelta -> {
-                            ui.displayBotMessageChunk(frame.text)
-                            accumulatedText += frame.text
+                            var text = frame.text
+                            if (isFirstChunk) {
+                                // Some models send leading newlines, let's trim them for the very first chunk
+                                text = text.trimStart('\n', '\r', ' ')
+                                if (text.isNotEmpty()) {
+                                    isFirstChunk = false
+                                }
+                            }
+                            
+                            if (text.isNotEmpty()) {
+                                ui.displayBotMessageChunk(text)
+                                accumulatedText += text
+                            }
                         }
                         is StreamFrame.ReasoningDelta -> ui.displayReasoning(frame.text)
                         is StreamFrame.ToolCallComplete -> ui.displayToolCall(frame.name)
@@ -88,7 +98,14 @@ suspend fun executeStreamingRequest(
     }
 
     ui.displayResponseEnd()
-    ui.displayResponseStats(response.inputTokens, response.outputTokens, duration, agent.getHistoryMessages().size)
+    ui.displayResponseStats(
+        response.inputTokens, 
+        response.outputTokens, 
+        agent.sessionInputTokens,
+        agent.sessionOutputTokens,
+        duration, 
+        agent.getHistoryMessages().size
+    )
     ui.displayFinishReason(response.finishReason)
 
     response

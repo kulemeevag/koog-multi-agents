@@ -39,6 +39,7 @@ class ConsoleUI {
         println("${CYAN}/history <n>$RESET    - Set max history pairs")
         println("${CYAN}/resume$RESET         - List and resume previous sessions")
         println("${CYAN}/resume <id>$RESET    - Resume specific session")
+        println("${CYAN}/stats$RESET          - View session token statistics")
         println("${CYAN}/config$RESET         - View all current settings")
         println("${CYAN}/clear$RESET          - Start a fresh session")
         println("${CYAN}/exit$RESET or ${CYAN}/quit$RESET - Exit")
@@ -223,13 +224,21 @@ class ConsoleUI {
     fun displayResponseStats(
         inputTokens: Int?,
         outputTokens: Int?,
-        duration: Duration,
+        sessionInputTokens: Int,
+        sessionOutputTokens: Int,
+        duration: Duration?,
         historySize: Int
     ) {
-        print("${CYAN}[Time: $duration")
-        if (inputTokens != null && outputTokens != null) {
-            print(", Tokens: ${inputTokens} in / ${outputTokens} out")
+        print("${CYAN}[")
+        if (duration != null && duration != Duration.ZERO) {
+            print("Time: $duration, ")
         }
+        
+        if (inputTokens != null && outputTokens != null) {
+            print("Tokens (turn): ${inputTokens} in / ${outputTokens} out, ")
+        }
+        
+        print("Tokens (session): ${sessionInputTokens} in / ${sessionOutputTokens} out")
         print(", History: $historySize messages")
         println("]$RESET")
     }

@@ -28,6 +28,7 @@ class ChatApplication(
             ModelCommand(),
             ClearCommand(),
             ConfigCommand(),
+            StatsCommand(),
             TempCommand(),
             SystemPromptCommand(),
             MaxTokensCommand(),
