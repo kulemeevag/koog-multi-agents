@@ -97,6 +97,9 @@ suspend fun executeStreamingRequest(
         LLMResponse(accumulatedText, accumulatedReason, inputTokens, outputTokens)
     }
 
+    val currentContextChars = agent.getHistoryMessages().sumOf { it.content.length }
+    val estContextTokens = currentContextChars / 4
+
     ui.displayResponseEnd()
     ui.displayResponseStats(
         response.inputTokens, 
@@ -104,7 +107,8 @@ suspend fun executeStreamingRequest(
         agent.sessionInputTokens,
         agent.sessionOutputTokens,
         duration, 
-        agent.getHistoryMessages().size
+        agent.getHistoryMessages().size,
+        estContextTokens
     )
     ui.displayFinishReason(response.finishReason)
 

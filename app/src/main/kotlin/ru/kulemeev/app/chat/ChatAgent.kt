@@ -10,6 +10,8 @@ import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.streaming.StreamFrame
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import ru.kulemeev.app.chat.strategies.HistoryCompressionStrategy
+import ru.kulemeev.app.chat.strategies.TruncateHistoryStrategy
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -43,16 +45,6 @@ class ChatAgent(
         currentPrompt.messages.forEach { storage.appendMessage(currentSessionId, it) }
     }
 
-    private fun generateNewSessionId(): String {
-        return SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(Date())
-    }
-
-    private fun createInitialPrompt(): Prompt {
-        return prompt(UUID.randomUUID().toString()) {
-            system(systemPrompt)
-        }
-    }
-
     /**
      * Resumes a previous session from storage.
      */
@@ -74,12 +66,23 @@ class ChatAgent(
         userInput: String,
         overrideParams: LLMParams? = null
     ): Flow<StreamFrame> = flow {
-        // 1. Proactive maintenance: trim before adding current turn
-        trimHistory(maxHistoryPairs - 1)
+        // Day 9: Auto-compression logic
+        // If history is getting long, use LLM to summarize it before proceeding
+        val currentMessages = currentPrompt.messages.filter { it.role != Message.Role.System }
+        if (currentMessages.size >= 10) {
+            // Only compress if we don't already have a very recent TLDR to avoid loops
+            val lastMsgContent = currentMessages.lastOrNull()?.content ?: ""
+            if (!lastMsgContent.contains("[CONVERSATION TL;DR]") && !lastMsgContent.contains("I have summarized")) {
+                compressHistory(ru.kulemeev.app.chat.strategies.WholeHistorySummaryStrategy())
+            }
+        }
+
+        // Safety net: Proactive maintenance using Truncate Strategy (FromLastNMessages in koog)
+        compressHistory(TruncateHistoryStrategy(maxHistoryPairs * 2))
 
         val params = overrideParams ?: createParams()
         
-        // Inject latest system prompt
+        // Ensure strictly one system message at the start
         val historyWithoutSystem = currentPrompt.messages.filter { it.role != Message.Role.System }
         val currentSystemMessage = prompt(UUID.randomUUID().toString()) { system(systemPrompt) }.messages
         
@@ -137,22 +140,74 @@ class ChatAgent(
         sessionOutputTokens = 0
     }
 
-    fun trimHistory(maxPairs: Int) {
+    fun getHistoryMessages(): List<Message> = currentPrompt.messages
+    fun listSessions(): List<String> = storage.listSessions()
+    suspend fun getAvailableModels(): List<LLModel> = executor.models()
+
+    /**
+     * Executes context compression using the specified strategy.
+     * This follows the same architecture as koog's compression.
+     */
+    suspend fun compressHistory(strategy: HistoryCompressionStrategy) {
         val messages = currentPrompt.messages
-        val systemMessages = messages.filter { it.role == Message.Role.System }
-        val nonSystemMessages = messages.filter { it.role != Message.Role.System }
         
-        val keepCount = maxPairs * 2
-        if (nonSystemMessages.size > keepCount) {
-            val trimmedNonSystem = nonSystemMessages.takeLast(keepCount)
-            currentPrompt = currentPrompt.copy(messages = systemMessages + trimmedNonSystem)
+        val compressedMessages = strategy.compress(messages) { history ->
+            generateSummary(history)
+        }
+        
+        if (compressedMessages != messages) {
+            currentPrompt = currentPrompt.copy(messages = compressedMessages)
             storage.saveFullHistory(currentSessionId, currentPrompt.messages)
         }
     }
 
-    fun getHistoryMessages(): List<Message> = currentPrompt.messages
-    fun listSessions(): List<String> = storage.listSessions()
-    suspend fun getAvailableModels(): List<LLModel> = executor.models()
+    private suspend fun generateSummary(history: List<Message>): String? {
+        val tldrPromptText = """
+            Briefly summarize our conversation so far into a TL;DR.
+            Focus on key objectives, findings, and current status.
+            Format with:
+            - Objectives
+            - Findings
+            - Status
+        """.trimIndent()
+
+        val tempPrompt = prompt(UUID.randomUUID().toString(), createParams()) {
+            history.filter { it.role != Message.Role.System }.forEach { msg ->
+                when (msg.role) {
+                    Message.Role.User -> user(msg.content)
+                    Message.Role.Assistant -> assistant(msg.content)
+                    else -> {}
+                }
+            }
+            user(tldrPromptText)
+        }
+
+        var result = ""
+        try {
+            executor.executeStreaming(tempPrompt, model).collect { frame ->
+                if (frame is StreamFrame.TextDelta) {
+                    result += frame.text
+                } else if (frame is StreamFrame.End) {
+                    // Accumulate cost of summarization itself
+                    sessionInputTokens += frame.metaInfo.inputTokensCount ?: 0
+                    sessionOutputTokens += frame.metaInfo.outputTokensCount ?: 0
+                }
+            }
+        } catch (e: Exception) {
+            return null
+        }
+        return result.takeIf { it.isNotBlank() }
+    }
+
+    private fun generateNewSessionId(): String {
+        return SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(Date())
+    }
+
+    private fun createInitialPrompt(): Prompt {
+        return prompt(UUID.randomUUID().toString()) {
+            system(systemPrompt)
+        }
+    }
 
     private fun createParams(): LLMParams {
         return OpenRouterParams(

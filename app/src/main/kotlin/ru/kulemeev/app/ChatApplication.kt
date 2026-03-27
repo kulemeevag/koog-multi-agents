@@ -35,6 +35,7 @@ class ChatApplication(
             StopSequencesCommand(),
             HistoryLimitCommand(),
             ResumeCommand(),
+            CompressCommand(),
             CompareCommand(),
             ResetCommand()
         )

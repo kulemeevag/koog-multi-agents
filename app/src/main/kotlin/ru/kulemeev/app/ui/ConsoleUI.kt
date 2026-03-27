@@ -227,7 +227,8 @@ class ConsoleUI {
         sessionInputTokens: Int,
         sessionOutputTokens: Int,
         duration: Duration?,
-        historySize: Int
+        historySize: Int,
+        currentHistorySizeEstimate: Int? = null
     ) {
         print("${CYAN}[")
         if (duration != null && duration != Duration.ZERO) {
@@ -240,6 +241,9 @@ class ConsoleUI {
         
         print("Tokens (session): ${sessionInputTokens} in / ${sessionOutputTokens} out")
         print(", History: $historySize messages")
+        if (currentHistorySizeEstimate != null) {
+            print(", Est. Context: ~$currentHistorySizeEstimate tokens")
+        }
         println("]$RESET")
     }
 

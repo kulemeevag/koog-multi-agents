@@ -8,6 +8,7 @@ import ru.kulemeev.app.chat.ChatCommand
 import ru.kulemeev.app.chat.ChatCommandContext
 import ru.kulemeev.app.chat.CommandResult
 import ru.kulemeev.app.chat.executeStreamingRequest
+import ru.kulemeev.app.chat.strategies.WholeHistorySummaryStrategy
 
 class ResetCommand : ChatCommand {
     override val name = "reset"
@@ -63,6 +64,27 @@ class ResumeCommand : ChatCommand {
     }
 }
 
+class CompressCommand : ChatCommand {
+    override val name = "compress"
+    override val description = "Compress history using TL;DR strategy"
+    override suspend fun execute(args: String, context: ChatCommandContext): CommandResult {
+        val oldHistoryCount = context.agent.getHistoryMessages().size
+        println("Compressing history ($oldHistoryCount messages)... Please wait.")
+        
+        val strategy = WholeHistorySummaryStrategy()
+        context.agent.compressHistory(strategy)
+        
+        val newHistory = context.agent.getHistoryMessages()
+        if (newHistory.size != oldHistoryCount) {
+            context.ui.displayFullHistory(newHistory)
+            println("History compressed from $oldHistoryCount to ${newHistory.size} messages.")
+        } else {
+            context.ui.displayError("Compression ignored (history too short or model error).")
+        }
+        return CommandResult.Handled
+    }
+}
+
 class CompareCommand : ChatCommand {
     override val name = "compare"
     override val description = "Interactive comparison mode"
@@ -77,7 +99,6 @@ class CompareCommand : ChatCommand {
         val restStop = context.ui.readComparisonStopSequences()
 
         context.ui.displayCompareHeader("CURRENT PARAMS")
-        // Use stateless request for comparison
         executeStreamingRequest(promptText, context.agent, context.ui, context.currentJob, isComparison = true)
 
         context.ui.displayCompareHeader("RESTRICTED (maxTokens=$restMaxTokens, stop=$restStop)")
@@ -86,7 +107,6 @@ class CompareCommand : ChatCommand {
             maxTokens = restMaxTokens,
             stop = restStop
         )
-        // Use stateless request with overrides
         executeStreamingRequest(promptText, context.agent, context.ui, context.currentJob, overrideParams = restrictedParams, isComparison = true)
 
         return CommandResult.Handled
